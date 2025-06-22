@@ -20,7 +20,7 @@ async fn health_checker_handler() -> impl Responder {
     }));
 }
 
-#[post("/task")]
+#[post("")]
 async fn create_task_handler(body: Json<CreateTaskSchema>, data: Data<AppState>) -> impl Responder {
     match sqlx::query_as!(
         TaskModel,
@@ -47,7 +47,7 @@ async fn create_task_handler(body: Json<CreateTaskSchema>, data: Data<AppState>)
     }
 }
 
-#[get("task/{id}")]
+#[get("{id}")]
 async fn get_task_by_id_handler(path: Path<Uuid>, data: Data<AppState>) -> impl Responder {
     let task = sqlx::query_as!(
         TaskModel,
@@ -70,7 +70,7 @@ async fn get_task_by_id_handler(path: Path<Uuid>, data: Data<AppState>) -> impl 
     }
 }
 
-#[get("/task")]
+#[get("")]
 async fn get_all_tasks_handler(
     filters: Query<FilterOptions>,
     data: Data<AppState>,
@@ -99,7 +99,7 @@ async fn get_all_tasks_handler(
     }
 }
 
-#[delete("task/{id}")]
+#[delete("{id}")]
 async fn delete_task_handler(path: Path<Uuid>, data: Data<AppState>) -> impl Responder {
     let result = sqlx::query_as!(
         TaskModel,
@@ -123,12 +123,13 @@ async fn delete_task_handler(path: Path<Uuid>, data: Data<AppState>) -> impl Res
 }
 
 pub fn config(cfg: &mut ServiceConfig) {
-    let scope = scope("/api")
-        .service(health_checker_handler)
+    let task_router = scope("/task")
         .service(create_task_handler)
         .service(get_all_tasks_handler)
         .service(get_task_by_id_handler)
         .service(delete_task_handler);
+
+    let scope = scope("/api").service(task_router);
 
     cfg.service(scope);
 }
