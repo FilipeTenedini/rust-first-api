@@ -1,10 +1,10 @@
 use crate::{
     AppState,
     model::TaskModel,
-    schema::{CreateTaskSchema, FilterOptions},
+    schema::{CreateTaskSchema, FilterOptions, UpdateTaskSchema},
 };
 use actix_web::{
-    HttpResponse, Responder, delete, get, post,
+    HttpResponse, Responder, delete, get, post, put,
     web::{Data, Json, Path, Query, ServiceConfig, scope},
 };
 use serde_json::json;
@@ -122,12 +122,59 @@ async fn delete_task_handler(path: Path<Uuid>, data: Data<AppState>) -> impl Res
     }
 }
 
+#[put("{id}")]
+async fn update_task_handler(
+    path: Path<Uuid>,
+    body: Json<UpdateTaskSchema>,
+    data: Data<AppState>,
+) -> impl Responder {
+    let task_id = path.into_inner();
+    let existing_task = sqlx::query_as!(TaskModel, "SELECT * FROM tasks WHERE id = $1", task_id,)
+        .fetch_one(&data.db)
+        .await;
+
+    match existing_task {
+        Ok(_) => {
+            match sqlx::query_as!(
+                TaskModel,
+                "UPDATE tasks SET title = $1, content = $2 WHERE id = $3 RETURNING *",
+                body.title,
+                body.content,
+                task_id,
+            )
+            .fetch_one(&data.db)
+            .await
+            {
+                Ok(task) => {
+                    return HttpResponse::Ok().json(json!({
+                        "status": "success",
+                        "data": task,
+                    }));
+                }
+                Err(e) => {
+                    return HttpResponse::InternalServerError().json(json!({
+                        "status": "error",
+                        "message": format!("{:?}", e)
+                    }));
+                }
+            }
+        }
+        Err(e) => {
+            return HttpResponse::NotFound().json(json!({
+                "status": "error",
+                "message": format!("{:?}", e)
+            }));
+        }
+    }
+}
+
 pub fn config(cfg: &mut ServiceConfig) {
     let task_router = scope("/task")
         .service(create_task_handler)
         .service(get_all_tasks_handler)
         .service(get_task_by_id_handler)
-        .service(delete_task_handler);
+        .service(delete_task_handler)
+        .service(update_task_handler);
 
     let scope = scope("/api").service(task_router);
 

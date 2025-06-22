@@ -7,6 +7,12 @@ pub struct CreateTaskSchema {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateTaskSchema {
+    pub title: Option<String>,
+    pub content: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FilterOptions {
     pub page: Option<u32>,
     pub limit: Option<u32>,
