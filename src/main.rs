@@ -1,3 +1,5 @@
+mod task;
+
 mod model;
 mod schema;
 mod services;
